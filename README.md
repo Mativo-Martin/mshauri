@@ -1,4 +1,4 @@
-# Clinic Booking System
+# Mshauri | Clinic Booking System
 
 **FastAPI + OpenStack | Python | Keycloak | Scalable & Production-Ready**
 
