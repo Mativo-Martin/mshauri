@@ -1,0 +1,71 @@
+# mshauri: GitLab CI (second pipeline, mirrors .github/workflows/ci.yml)
+# Job names `checks` and `docker` match the GitHub jobs on purpose.
+# Step 1 adds a postgres service to `checks`. CD stays on GitHub (single deploy path, plan D5).
+
+stages:
+  - checks
+  - docker
+
+workflow:
+  rules:
+    # One pipeline per push: MR pipeline when an MR is open, otherwise a branch pipeline.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+default:
+  interruptible: true
+  timeout: 10m
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+checks:
+  stage: checks
+  image: python:3.12-slim
+  cache:
+    key:
+      files:
+        - pyproject.toml
+    paths:
+      - .cache/pip
+  script:
+    - python --version
+    - pip install -e ".[dev]"
+    - ruff check .
+    - ruff format --check .
+    - mypy --strict app tests
+    - pytest
+
+docker:
+  stage: docker
+  needs: ["checks"]
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+  before_script:
+    - apk add --no-cache curl
+    - for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 2; done
+  script:
+    - docker build --build-arg APP_VERSION="$CI_COMMIT_SHA" -t mshauri:ci .
+    - docker run -d --name api -p 8000:8000 mshauri:ci
+    # With docker-in-docker the container is on the `docker` service host, not localhost.
+    - |
+      for i in $(seq 1 15); do
+        if body=$(curl -fsS http://docker:8000/health); then
+          echo "$body"
+          echo "$body" | grep -q "$CI_COMMIT_SHA" && exit 0
+          echo "health answered but version is not $CI_COMMIT_SHA"
+          exit 1
+        fi
+        sleep 2
+      done
+      docker logs api
+      exit 1
