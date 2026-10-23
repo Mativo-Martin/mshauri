@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check run docker
+.PHONY: install lint typecheck test check run docker db-up db-down db-reset migrate
 install:
 	pip install -e ".[dev]"
 lint:
@@ -12,3 +12,15 @@ run:
 	uvicorn app.main:app --reload
 docker:
 	docker compose up --build
+
+db-up:
+	docker compose up -d --wait db
+
+db-down:
+	docker compose stop db
+
+db-reset:
+	docker compose down -v
+
+migrate:
+	alembic upgrade head
