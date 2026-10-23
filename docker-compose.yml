@@ -1,0 +1,12 @@
+# Local development. Postgres and Keycloak are added in steps 1 and 3.
+services:
+  api:
+    build:
+      context: .
+      args:
+        APP_VERSION: local
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
