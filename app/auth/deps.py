@@ -9,11 +9,11 @@ Authentication runs first, so a missing token is a 401 even when the body is als
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
-from app.auth.schemes import oauth2_scheme
-from app.auth.tokens import Principal, TokenValidator
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.auth.schemes import oauth2_scheme
+from app.auth.tokens import Principal, TokenValidator
 from app.core.audit import audit
 from app.core.errors import AppError, ErrorCode
 from app.db.engine import get_session_factory

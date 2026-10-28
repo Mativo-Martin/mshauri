@@ -7,12 +7,12 @@ from typing import Annotated, Any
 
 import pytest
 import pytest_asyncio
-from app.auth.jwks import JwksCache
-from app.auth.tokens import Principal, TokenConfig, TokenValidator
 from fastapi import Depends
 from httpx import ASGITransport, AsyncClient
 
 from app.auth.deps import get_token_validator, require_permission, require_roles
+from app.auth.jwks import JwksCache
+from app.auth.tokens import Principal, TokenConfig, TokenValidator
 from app.main import create_app
 from tests.unit.auth_helpers import AUDIENCE, ISSUER, KEY_A, FakeJwks, bearer, claims, roles
 

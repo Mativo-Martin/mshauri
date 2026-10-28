@@ -2,7 +2,6 @@ import logging
 
 from app.auth.jwks import JwksCache, http_fetcher
 from app.auth.tokens import TokenConfig, TokenValidator
-
 from app.config import Settings
 
 logger = logging.getLogger(__name__)
