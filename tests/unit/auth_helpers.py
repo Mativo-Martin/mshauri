@@ -51,12 +51,31 @@ def claims(*, drop: tuple[str, ...] = (), **overrides: Any) -> dict[str, Any]:
     return payload
 
 
-def sign(payload: dict[str, Any], key: SigningKey = KEY_A, *, kid: str | None = None) -> str:
-    return jwt.encode(payload, key.private, algorithm="RS256", headers={"kid": kid or key.kid})
+def sign(
+    payload: dict[str, Any],
+    key: SigningKey = KEY_A,
+    *,
+    kid: str | None = None,
+) -> str:
+    token = jwt.encode(
+        payload,
+        key.private,
+        algorithm="RS256",
+        headers={"kid": kid or key.kid},
+    )
+    if not isinstance(token, str):
+        raise TypeError("Expected encoded JWT to be a string")
+    return token
 
 
-def sign_without_kid(payload: dict[str, Any], key: SigningKey = KEY_A) -> str:
-    return jwt.encode(payload, key.private, algorithm="RS256")
+def sign_without_kid(
+    payload: dict[str, Any],
+    key: SigningKey = KEY_A,
+) -> str:
+    token = jwt.encode(payload, key.private, algorithm="RS256")
+    if not isinstance(token, str):
+        raise TypeError("Expected encoded JWT to be a string")
+    return token
 
 
 class FakeJwks:
