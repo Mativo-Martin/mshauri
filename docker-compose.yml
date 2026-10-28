@@ -1,5 +1,21 @@
-# Local development. Postgres and Keycloak are added in steps 1 and 3.
+# Local development. Keycloak is added in step 3. Dev credentials only; never reuse in production.
 services:
+  db:
+    image: postgres:16.9-alpine
+    environment:
+      POSTGRES_USER: mshauri
+      POSTGRES_PASSWORD: mshauri
+      POSTGRES_DB: mshauri
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mshauri -d mshauri"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build:
       context: .
@@ -10,3 +26,11 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mshauri:mshauri@db:5432/mshauri
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
