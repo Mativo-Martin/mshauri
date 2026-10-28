@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check run docker db-up db-down db-reset migrate
+.PHONY: install lint typecheck test check run docker db-up db-down db-reset migrate seed test-unit seed
 install:
 	pip install -e ".[dev]"
 lint:
@@ -24,3 +24,9 @@ db-reset:
 
 migrate:
 	alembic upgrade head
+
+seed:
+	python scripts/seed.py
+
+test-unit:
+	pytest tests/unit -q
