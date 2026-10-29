@@ -22,6 +22,10 @@ def admin(*permissions: str, sub: str = "kc-admin") -> dict[str, str]:
     return bearer(claims(sub=sub, realm_access=roles("admin", *permissions)))
 
 
+async def patient_id_of(client: AsyncClient, sub: str) -> str:
+    return str((await client.get("/me", headers=patient(sub))).json()["patient_id"])
+
+
 async def make_booking(
     client: AsyncClient, doctor_id: uuid.UUID, sub: str = "kc-p1", start: str = SLOT
 ) -> str:
@@ -70,3 +74,27 @@ async def free_starts(
     )
     assert response.status_code == 200, response.text
     return [slot["start_at"] for slot in response.json()["slots"]]
+
+
+async def get_appointment(
+    client: AsyncClient, headers: dict[str, str], appointment_id: str
+) -> Response:
+    return await client.get(f"/appointments/{appointment_id}", headers=headers)
+
+
+async def doctor_appointments(
+    client: AsyncClient,
+    headers: dict[str, str],
+    doctor_id: uuid.UUID | str,
+    params: dict[str, Any] | None = None,
+) -> Response:
+    return await client.get(f"/doctors/{doctor_id}/appointments", params=params, headers=headers)
+
+
+async def patient_appointments(
+    client: AsyncClient,
+    headers: dict[str, str],
+    patient_id: uuid.UUID | str,
+    params: dict[str, Any] | None = None,
+) -> Response:
+    return await client.get(f"/patients/{patient_id}/appointments", params=params, headers=headers)

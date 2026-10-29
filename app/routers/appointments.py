@@ -11,6 +11,7 @@ from app.db.uow import UnitOfWork
 from app.routers.doctors import get_slot_rules
 from app.schemas.appointment_changes import CancelRequest, RescheduleRequest
 from app.schemas.appointments import AppointmentOut, BookRequest, appointment_out
+from app.services.appointment_reads import read_appointment
 from app.services.appointments import cancel_appointment, reschedule_appointment
 from app.services.booking import book_appointment
 from app.services.profiles import Profile
@@ -88,4 +89,24 @@ async def reschedule(
 ) -> AppointmentOut:
     """Move to a new slot, same doctor, same row. Same access rules as cancel."""
     view = await reschedule_appointment(uow, profile, appointment_id, body.new_start_at, now, rules)
+    return appointment_out(view.appointment, view.doctor_name, view.patient_name, rules.timezone)
+
+
+@router.get(
+    "/{appointment_id}",
+    response_model=AppointmentOut,
+    response_model_exclude_none=True,
+    dependencies=[
+        Depends(require_roles("patient", "doctor", "admin")),
+        Depends(require_permission_if_admin("view_any")),
+    ],
+)
+async def read(
+    appointment_id: uuid.UUID,
+    profile: Annotated[Profile, Depends(current_profile)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+    rules: Annotated[SlotRules, Depends(get_slot_rules)],
+) -> AppointmentOut:
+    """One appointment. Patients: own. Doctors: own schedule. Admins: `view_any`."""
+    view = await read_appointment(uow, profile, appointment_id)
     return appointment_out(view.appointment, view.doctor_name, view.patient_name, rules.timezone)

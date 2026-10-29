@@ -29,15 +29,19 @@ class AppointmentView:
     patient_name: str
 
 
-def can_change(profile: Profile, appointment: Appointment) -> bool:
-    """Own appointment (patient), own schedule (doctor), or an admin holding manage_any."""
+def can_access(profile: Profile, appointment: Appointment, admin_permission: str) -> bool:
+    """Own appointment (patient), own schedule (doctor), or an admin holding the permission."""
     if profile.role == "patient":
         return profile.patient_id is not None and appointment.patient_id == profile.patient_id
     if profile.role == "doctor":
         return profile.doctor_id is not None and appointment.doctor_id == profile.doctor_id
     if profile.role == "admin":
-        return profile.principal.has_permission("manage_any")
+        return profile.principal.has_permission(admin_permission)
     return False
+
+
+def can_change(profile: Profile, appointment: Appointment) -> bool:
+    return can_access(profile, appointment, "manage_any")
 
 
 async def load_for_change(

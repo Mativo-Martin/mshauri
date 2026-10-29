@@ -61,3 +61,21 @@ def appointment_out(
         created_at=appointment.created_at.astimezone(tz),
         updated_at=appointment.updated_at.astimezone(tz),
     )
+
+
+class AppointmentList(BaseModel):
+    items: list[AppointmentOut]
+    total: int
+    limit: int
+    offset: int
+
+
+def appointment_list(
+    rows: list[tuple[Appointment, str, str]], total: int, limit: int, offset: int, tz: ZoneInfo
+) -> AppointmentList:
+    return AppointmentList(
+        items=[appointment_out(a, doctor, patient, tz) for a, doctor, patient in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )

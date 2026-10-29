@@ -9,7 +9,7 @@ from app.config import Settings, get_settings
 from app.core.audit import configure_audit_logging
 from app.core.handlers import register_handlers
 from app.db.engine import create_engine, create_session_factory
-from app.routers import appointments, doctors, health, me
+from app.routers import appointments, doctors, health, me, patients
 
 
 @asynccontextmanager
@@ -48,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(me.router)
     app.include_router(doctors.router)
     app.include_router(appointments.router)
+    app.include_router(patients.router)
 
     if config.docs_enabled:
 
