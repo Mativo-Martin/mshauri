@@ -26,8 +26,11 @@ def register_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+        errors = exc.errors()
+        if any(err["type"] == "naive_datetime" for err in errors):
+            return error_response(ErrorCode.NAIVE_DATETIME)
         # Field locations only: never echo the submitted values, which may be personal data.
-        fields = sorted({".".join(str(part) for part in err["loc"]) for err in exc.errors()})
+        fields = sorted({".".join(str(part) for part in err["loc"]) for err in errors})
         return error_response(
             ErrorCode.VALIDATION_ERROR, f"Invalid or missing: {', '.join(fields)}"
         )
