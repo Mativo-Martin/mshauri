@@ -1,11 +1,12 @@
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import ColumnElement, func, insert, select, update
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Appointment
+from app.models import Appointment, Doctor, Patient
 
 # The double-booking guard (plan section 6). Matched by name, never by message wording alone.
 SLOT_INDEX = "uq_appointments_doctor_start_booked"
@@ -128,3 +129,49 @@ async def move_appointment(
         .execution_options(populate_existing=True)
     )
     return result.scalar_one()
+
+
+AppointmentRow = tuple[Appointment, str, str]  # appointment, doctor name, patient name
+
+
+async def get_by_id(session: AsyncSession, appointment_id: uuid.UUID) -> Appointment | None:
+    """Plain read, no lock."""
+    result = await session.execute(select(Appointment).where(Appointment.id == appointment_id))
+    return result.scalar_one_or_none()
+
+
+async def list_with_names(
+    session: AsyncSession,
+    *,
+    statuses: Sequence[str],
+    doctor_id: uuid.UUID | None = None,
+    patient_id: uuid.UUID | None = None,
+    start_from: datetime | None = None,
+    start_to: datetime | None = None,
+    limit: int,
+    offset: int,
+) -> tuple[list[AppointmentRow], int]:
+    """One page ordered by (start_at, id), plus the total. `start_to` is exclusive."""
+    conditions: list[ColumnElement[bool]] = [Appointment.status.in_(statuses)]
+    if doctor_id is not None:
+        conditions.append(Appointment.doctor_id == doctor_id)
+    if patient_id is not None:
+        conditions.append(Appointment.patient_id == patient_id)
+    if start_from is not None:
+        conditions.append(Appointment.start_at >= start_from.astimezone(UTC))
+    if start_to is not None:
+        conditions.append(Appointment.start_at < start_to.astimezone(UTC))
+
+    total = (
+        await session.execute(select(func.count()).select_from(Appointment).where(*conditions))
+    ).scalar_one()
+    result = await session.execute(
+        select(Appointment, Doctor.name, Patient.name)
+        .join(Doctor, Doctor.id == Appointment.doctor_id)
+        .join(Patient, Patient.id == Appointment.patient_id)
+        .where(*conditions)
+        .order_by(Appointment.start_at, Appointment.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    return [(a, doctor_name, patient_name) for a, doctor_name, patient_name in result.all()], total
