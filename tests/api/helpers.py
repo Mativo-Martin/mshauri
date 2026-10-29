@@ -70,3 +70,18 @@ async def free_starts(
     )
     assert response.status_code == 200, response.text
     return [slot["start_at"] for slot in response.json()["slots"]]
+
+
+async def get_appointment(
+    client: AsyncClient, headers: dict[str, str], appointment_id: str
+) -> Response:
+    return await client.get(f"/appointments/{appointment_id}", headers=headers)
+
+
+async def doctor_appointments(
+    client: AsyncClient,
+    headers: dict[str, str],
+    doctor_id: uuid.UUID | str,
+    params: dict[str, Any] | None = None,
+) -> Response:
+    return await client.get(f"/doctors/{doctor_id}/appointments", params=params, headers=headers)
