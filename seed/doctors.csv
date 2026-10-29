@@ -1,0 +1,6 @@
+external_ref,name,specialty,is_active,keycloak_sub
+DOC-001,Dr. Amina Wanjiru,General Practice,true,a2000000-0000-4000-8000-000000000001
+DOC-002,Dr. Brian Otieno,Paediatrics,true,a2000000-0000-4000-8000-000000000002
+DOC-003,Dr. Carol Njeri,Dermatology,true,
+DOC-004,Dr. David Mutua,Internal Medicine,true,
+DOC-005,Dr. Esther Achieng,Obstetrics and Gynaecology,true,

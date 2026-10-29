@@ -6,7 +6,7 @@ dist/
 build/
 
 # Virtual environments
-.venv/
+.venv*
 venv/
 
 # Environment variables and secrets

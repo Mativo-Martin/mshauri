@@ -1,0 +1,8 @@
+doctor_ref,type,start_timestamp,end_timestamp,reason
+DOC-002,leave,2026-11-02T00:00:00+03:00,2026-11-07T00:00:00+03:00,Annual leave
+DOC-003,unavailable,2026-11-12T14:00:00+03:00,2026-11-12T17:00:00+03:00,Training
+DOC-001,closure,2026-12-25T00:00:00+03:00,2026-12-26T00:00:00+03:00,Public holiday
+DOC-002,closure,2026-12-25T00:00:00+03:00,2026-12-26T00:00:00+03:00,Public holiday
+DOC-003,closure,2026-12-25T00:00:00+03:00,2026-12-26T00:00:00+03:00,Public holiday
+DOC-004,closure,2026-12-25T00:00:00+03:00,2026-12-26T00:00:00+03:00,Public holiday
+DOC-005,closure,2026-12-25T00:00:00+03:00,2026-12-26T00:00:00+03:00,Public holiday

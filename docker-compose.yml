@@ -1,4 +1,4 @@
-# Local development. Keycloak is added in step 3. Dev credentials only; never reuse in production.
+# Local development. Dev credentials only; never reuse in production.
 services:
   db:
     image: postgres:16.9-alpine
@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: mshauri
       POSTGRES_DB: mshauri
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -16,13 +16,34 @@ services:
       timeout: 3s
       retries: 10
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # The issuer in every token is built from this, so it must match KEYCLOAK_ISSUER exactly.
+      KC_HOSTNAME: http://localhost:8080
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./keycloak/realm-clinic.json:/opt/keycloak/data/import/realm-clinic.json:ro
+    healthcheck:
+      # The image has no curl; this only proves the management port (9000) is listening.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000"]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+      start_period: 60s
+
   api:
     build:
       context: .
       args:
         APP_VERSION: local
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - path: .env
         required: false

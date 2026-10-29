@@ -1,0 +1,289 @@
+{
+  "realm": "clinic",
+  "enabled": true,
+  "displayName": "mshauri clinic",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 900,
+  "ssoSessionMaxLifespan": 28800,
+  "roles": {
+    "realm": [
+      {
+        "name": "patient",
+        "description": "Clinic patient"
+      },
+      {
+        "name": "doctor",
+        "description": "Clinic doctor"
+      },
+      {
+        "name": "admin",
+        "description": "Clinic administrator; acts only through permission roles"
+      },
+      {
+        "name": "book_for_patient",
+        "description": "Admin permission: book on behalf of a patient"
+      },
+      {
+        "name": "manage_any",
+        "description": "Admin permission: cancel or reschedule any appointment"
+      },
+      {
+        "name": "view_any",
+        "description": "Admin permission: view any appointment or list"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "clinic-api",
+      "name": "mshauri API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "bearerOnly": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "clinic-docs",
+      "name": "mshauri Swagger UI",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8000/docs/oauth2-redirect"
+      ],
+      "webOrigins": [
+        "http://localhost:8000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "clinic-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "clinic-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "clinic-postman",
+      "name": "mshauri Postman",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://oauth.pstmn.io/v1/callback",
+        "https://oauth.pstmn.io/v1/browser-callback"
+      ],
+      "webOrigins": [
+        "https://oauth.pstmn.io"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "clinic-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "clinic-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "admin-cli",
+      "name": "Built-in CLI client, disabled: the password grant is forbidden (plan 10.1)",
+      "protocol": "openid-connect",
+      "enabled": false,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false
+    }
+  ],
+  "users": [
+    {
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "username": "patient1",
+      "email": "patient1@example.test",
+      "firstName": "Pat",
+      "lastName": "One",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-patient1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "patient"
+      ]
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "username": "patient2",
+      "email": "patient2@example.test",
+      "firstName": "Pat",
+      "lastName": "Two",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-patient2",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "patient"
+      ]
+    },
+    {
+      "id": "a2000000-0000-4000-8000-000000000001",
+      "username": "doctor1",
+      "email": "doctor1@example.test",
+      "firstName": "Doc",
+      "lastName": "One",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-doctor1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "doctor"
+      ]
+    },
+    {
+      "id": "a2000000-0000-4000-8000-000000000002",
+      "username": "doctor2",
+      "email": "doctor2@example.test",
+      "firstName": "Doc",
+      "lastName": "Two",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-doctor2",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "doctor"
+      ]
+    },
+    {
+      "id": "a3000000-0000-4000-8000-000000000001",
+      "username": "admin_full",
+      "email": "admin.full@example.test",
+      "firstName": "Admin",
+      "lastName": "Full",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-admin_full",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "book_for_patient",
+        "manage_any",
+        "view_any"
+      ]
+    },
+    {
+      "id": "a3000000-0000-4000-8000-000000000002",
+      "username": "admin_view_only",
+      "email": "admin.view@example.test",
+      "firstName": "Admin",
+      "lastName": "ViewOnly",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-admin_view_only",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "view_any"
+      ]
+    }
+  ],
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "defaultSignatureAlgorithm": "RS256",
+  "editUsernameAllowed": false,
+  "passwordPolicy": "length(12) and notUsername and notEmail",
+  "eventsEnabled": true,
+  "eventsExpiration": 7776000,
+  "eventsListeners": [
+    "jboss-logging"
+  ],
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "LOGOUT_ERROR",
+    "UPDATE_PASSWORD",
+    "UPDATE_PASSWORD_ERROR",
+    "UPDATE_TOTP",
+    "REMOVE_TOTP",
+    "RESET_PASSWORD",
+    "RESET_PASSWORD_ERROR",
+    "CODE_TO_TOKEN_ERROR",
+    "REFRESH_TOKEN_ERROR"
+  ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false
+}
