@@ -14,9 +14,9 @@ from app.repositories import appointments as appointment_repo
 from app.repositories import doctors as doctor_repo
 from app.repositories.profiles import get_patient
 from app.schemas.appointments import BookRequest
-from app.services.availability import local_day_bounds
 from app.services.profiles import Profile
-from app.services.slots import SlotRules, validate_slot
+from app.services.slot_check import check_slot
+from app.services.slots import SlotRules
 
 
 @dataclass(frozen=True)
@@ -86,16 +86,11 @@ async def book_appointment(
     # A rollback expires loaded rows, so keep the plain values we still need.
     doctor_id, doctor_name = doctor.id, doctor.name
     patient_name = patient.name
-
     start_at = request.start_at.astimezone(UTC)
-    local_day = start_at.astimezone(rules.timezone).date()
-    day_start, day_end = local_day_bounds(local_day, rules)
-    windows = await doctor_repo.get_windows(session, doctor_id, local_day.weekday())
-    blocked = await doctor_repo.get_blocked_intervals(session, doctor_id, day_start, day_end)
-    validate_slot(
+    await check_slot(
+        uow,
+        doctor_id=doctor_id,
         doctor_active=doctor.is_active,
-        windows=windows,
-        exceptions=blocked,
         start_at=start_at,
         now=now,
         rules=rules,

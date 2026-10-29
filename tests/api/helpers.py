@@ -41,3 +41,32 @@ async def cancel(
     return await client.patch(
         f"/appointments/{appointment_id}/cancel", json={"reason": reason}, headers=headers
     )
+
+
+NEW_SLOT = "2030-01-07T09:30:00+03:00"  # a free slot in the same Monday window as SLOT
+
+
+async def reschedule(
+    client: AsyncClient,
+    headers: dict[str, str],
+    appointment_id: str,
+    new_start: Any = NEW_SLOT,
+) -> Response:
+    return await client.patch(
+        f"/appointments/{appointment_id}/reschedule",
+        json={"new_start_at": new_start},
+        headers=headers,
+    )
+
+
+async def free_starts(
+    client: AsyncClient, doctor_id: uuid.UUID, day: str = "2030-01-07"
+) -> list[str]:
+    """Start times the availability endpoint offers for a day."""
+    response = await client.get(
+        f"/doctors/{doctor_id}/availability",
+        params={"date": day},
+        headers=patient("kc-viewer"),
+    )
+    assert response.status_code == 200, response.text
+    return [slot["start_at"] for slot in response.json()["slots"]]
