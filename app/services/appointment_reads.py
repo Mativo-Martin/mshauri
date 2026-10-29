@@ -88,3 +88,34 @@ async def list_doctor_appointments(
         offset=offset,
     )
     return AppointmentPage(rows, total)
+
+
+async def list_patient_appointments(
+    uow: UnitOfWork,
+    profile: Profile,
+    patient_id: uuid.UUID,
+    *,
+    now: datetime,
+    limit: int,
+    offset: int,
+) -> AppointmentPage:
+    """A patient sees only their own upcoming booked list (403 before any 404).
+
+    Admins need view_any (route).
+    """
+    session = uow.session
+    if profile.role == "patient":
+        if profile.patient_id != patient_id:
+            raise _deny(profile, "patient.appointments.list", "not_own_appointments")
+    elif await get_patient(session, patient_id) is None:
+        raise AppError(ErrorCode.PATIENT_NOT_FOUND)
+
+    rows, total = await appointment_repo.list_with_names(
+        session,
+        statuses=("booked",),
+        patient_id=patient_id,
+        start_from=now,
+        limit=limit,
+        offset=offset,
+    )
+    return AppointmentPage(rows, total)
