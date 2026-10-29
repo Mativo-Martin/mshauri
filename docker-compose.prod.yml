@@ -1,0 +1,81 @@
+services:
+  caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-prod}
+    restart: unless-stopped
+    environment:
+      APP_NAME: mshauri
+      ENVIRONMENT: prod
+      APP_VERSION: ${APP_VERSION:-prod}
+      DATABASE_URL: postgresql+asyncpg://mshauri:${DB_PASSWORD:-mshauri}@db:5432/mshauri
+      KEYCLOAK_ISSUER: https://mshauri.mativo.space/realms/clinic
+      KEYCLOAK_AUDIENCE: clinic-api
+      JWKS_URL: http://keycloak:8080/realms/clinic/protocol/openid-connect/certs
+      DOCS_ENABLED: "true"
+      DOCS_OAUTH_CLIENT_ID: clinic-docs
+      CLINIC_TIMEZONE: Africa/Nairobi
+      MIN_LEAD_TIME_MINUTES: 60
+      MAX_BOOKING_HORIZON_DAYS: 90
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  db:
+    image: postgres:16.9-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mshauri
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mshauri}
+      POSTGRES_DB: mshauri
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mshauri -d mshauri"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME: https://mshauri.mativo.space
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-clinic.json:/opt/keycloak/data/import/realm-clinic.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000"]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+      start_period: 40s
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
