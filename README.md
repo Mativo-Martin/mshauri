@@ -78,16 +78,39 @@ pytest              # tests only
 pytest tests/unit   # fast unit tests, no DB needed
 ```
 
-## CI/CD
+## Deployment & CI/CD
 
-**GitHub Actions** (`.github/workflows/ci.yml`) runs on every pull request and on push to `main`:
+### Public Application URL
 
-1. **checks** — ruff lint, ruff format, mypy --strict, pytest (against a real Postgres service container).
-2. **docker** — builds the production image and smoke-tests `GET /health` inside a running container.
+- **Production API & UI:** [https://mshauri.mativo.space](https://mshauri.mativo.space)
+- **Interactive Documentation:** [https://mshauri.mativo.space/docs](https://mshauri.mativo.space/docs) (Swagger UI with Keycloak OAuth2 PKCE)
+- **Health & Readiness:**
+  - Liveness: `https://mshauri.mativo.space/health`
+  - Readiness (DB connected): `https://mshauri.mativo.space/ready`
+- **Identity Provider (OIDC):** `https://mshauri.mativo.space/realms/clinic/.well-known/openid-configuration`
 
-The `docker` job only runs after `checks` passes. Concurrent runs on the same ref are cancelled to save runner minutes.
+### Deployment Setup
 
-Deployment to OpenStack (Phase D) uses a pull-based approach: the VM polls a container registry and restarts the service via a systemd unit.
+- **Cloud Infrastructure:** Ubuntu 24.04 LTS host with Cloudflare DNS proxying.
+- **Reverse Proxy:** Caddy terminates TLS and directs traffic:
+  - `/realms/*`, `/resources/*`, and `/js/*` route to Keycloak.
+  - All application endpoints and `/docs` route to the FastAPI container.
+- **Security & Isolation:** Only Caddy binds to external ports (`80` and `443`). PostgreSQL, Keycloak, and FastAPI communicate across an isolated internal Docker network protected by UFW.
+
+### CI/CD Pipeline
+
+The pipeline is automated using **GitHub Actions** (`.github/workflows/ci.yml`):
+
+1. **Pull Requests (PR gate):**
+   - **`checks` job:** Runs `ruff check` (linting), `ruff format --check` (code formatting), `mypy --strict` (static type checking), and the full `pytest` suite against an active PostgreSQL 16 service container.
+   - **`docker` job:** Builds the Docker container image and executes an automated smoke test against `GET /health`.
+2. **Merge to Designated Branch (`main`):**
+   - Merging a PR into `main` automatically triggers the **`deploy` job**:
+     - Connects securely to the production host via SSH.
+     - Fetches the latest commits from `main`.
+     - Rebuilds container images, applies database migrations (`alembic upgrade head`), and loads idempotent seed data (`scripts/seed.py`).
+     - Performs a rolling restart of application containers.
+     - Runs a post-deployment verification against `https://mshauri.mativo.space/health` and `/ready` to confirm deployment health.
 
 ## Technology
 

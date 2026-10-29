@@ -4,6 +4,10 @@ ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /build
 COPY pyproject.toml ./
 COPY app ./app
+COPY alembic.ini ./
+COPY alembic ./alembic
+COPY scripts ./scripts
+COPY seed ./seed
 RUN python -m venv /opt/venv && /opt/venv/bin/pip install .
 
 FROM python:3.12-slim
@@ -16,6 +20,10 @@ RUN useradd --system --uid 10001 --no-create-home appuser
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /srv
 COPY app ./app
+COPY alembic.ini ./
+COPY alembic ./alembic
+COPY scripts ./scripts
+COPY seed ./seed
 USER appuser
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

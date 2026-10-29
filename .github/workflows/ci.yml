@@ -64,3 +64,34 @@ jobs:
           done
           docker logs api
           exit 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [checks, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER || 'ubuntu' }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/mshauri
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
+            ./scripts/deploy.sh
+      - name: Verify public deployment
+        run: |
+          for i in $(seq 1 15); do
+            if curl -fsS https://mshauri.mativo.space/health | grep -q "ok"; then
+              echo "Public healthcheck succeeded!"
+              curl -fsS https://mshauri.mativo.space/ready
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Public healthcheck timed out!"
+          exit 1

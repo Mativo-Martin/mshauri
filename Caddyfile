@@ -1,0 +1,24 @@
+{
+    admin off
+}
+
+http://mshauri.mativo.space, https://mshauri.mativo.space {
+    # Keycloak authentication and static resources
+    handle /realms/* {
+        reverse_proxy keycloak:8080
+    }
+    handle /resources/* {
+        reverse_proxy keycloak:8080
+    }
+    handle /js/* {
+        reverse_proxy keycloak:8080
+    }
+    handle /admin/* {
+        reverse_proxy keycloak:8080
+    }
+
+    # API endpoints and Swagger UI documentation
+    handle {
+        reverse_proxy api:8000
+    }
+}
