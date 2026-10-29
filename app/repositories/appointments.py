@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,3 +65,37 @@ def is_slot_conflict(exc: IntegrityError) -> bool:
     if name is not None:
         return name == SLOT_INDEX
     return SLOT_INDEX in str(exc.orig)
+
+
+async def get_for_update(session: AsyncSession, appointment_id: uuid.UUID) -> Appointment | None:
+    """Load and lock the row until the transaction ends. Concurrent changes queue behind it."""
+    result = await session.execute(
+        select(Appointment)
+        .where(Appointment.id == appointment_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def mark_cancelled(
+    session: AsyncSession,
+    appointment_id: uuid.UUID,
+    reason: str,
+    cancelled_at: datetime,
+    cancelled_by_sub: str,
+) -> Appointment:
+    result = await session.execute(
+        update(Appointment)
+        .where(Appointment.id == appointment_id)
+        .values(
+            status="cancelled",
+            cancel_reason=reason,
+            cancelled_at=cancelled_at,
+            cancelled_by_sub=cancelled_by_sub,
+            updated_at=func.now(),
+        )
+        .returning(Appointment)
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one()

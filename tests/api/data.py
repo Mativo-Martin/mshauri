@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, time
 
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.models import Doctor, DoctorSchedule, ScheduleException
@@ -70,3 +70,9 @@ async def book(
             )
         else:
             await make_appointment(conn, doctor_id, patient_id, start_at)
+
+
+async def link_doctor(engine: AsyncEngine, doctor_id: uuid.UUID, sub: str) -> None:
+    """Link a Keycloak subject to a doctor, as the seed and import tool do."""
+    async with engine.begin() as conn:
+        await conn.execute(update(Doctor).where(Doctor.id == doctor_id).values(keycloak_sub=sub))

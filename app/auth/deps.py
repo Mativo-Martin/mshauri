@@ -83,3 +83,27 @@ def require_permission(permission: str) -> Callable[..., Awaitable[Principal]]:
         return principal
 
     return dependency
+
+
+def require_permission_if_admin(permission: str) -> Callable[..., Awaitable[Principal]]:
+    """Admins must hold `permission`; patients and doctors pass and face ownership checks later.
+
+    Runs before body validation and before any lookup, so a refused admin learns nothing
+    about which appointment IDs exist.
+    """
+
+    async def dependency(
+        principal: Annotated[Principal, Depends(current_principal)],
+    ) -> Principal:
+        if principal.role == "admin" and not principal.has_permission(permission):
+            audit(
+                "authorize",
+                actor_sub=principal.sub,
+                role=principal.role,
+                outcome="denied",
+                reason=f"permission_required:{permission}",
+            )
+            raise AppError(ErrorCode.FORBIDDEN)
+        return principal
+
+    return dependency
