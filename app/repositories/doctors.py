@@ -67,3 +67,9 @@ async def get_booked_starts(
         )
     )
     return list(result.scalars().all())
+
+
+async def get_doctor(session: AsyncSession, doctor_id: uuid.UUID) -> Doctor | None:
+    """Any doctor, active or not. Callers decide what inactive means."""
+    result = await session.execute(select(Doctor).where(Doctor.id == doctor_id))
+    return result.scalar_one_or_none()

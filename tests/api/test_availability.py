@@ -14,10 +14,14 @@ MONDAY = "2030-01-07"
 ALL_SIX = [datetime(2030, 1, 7, 6 + n // 2, 30 * (n % 2), tzinfo=UTC) for n in range(6)]
 
 
-async def starts(client: AsyncClient, doctor_id: uuid.UUID, day: str = MONDAY) -> list[datetime]:
-    response = await client.get(
+async def fetch(client: AsyncClient, doctor_id: uuid.UUID, day: str = MONDAY):  # type: ignore[no-untyped-def]
+    return await client.get(
         f"/doctors/{doctor_id}/availability", params={"date": day}, headers=bearer()
     )
+
+
+async def starts(client: AsyncClient, doctor_id: uuid.UUID, day: str = MONDAY) -> list[datetime]:
+    response = await fetch(client, doctor_id, day)
     assert response.status_code == 200, response.text
     return [datetime.fromisoformat(s["start_at"]) for s in response.json()["slots"]]
 
@@ -27,20 +31,18 @@ async def test_a_working_day_offers_every_slot(client: AsyncClient, fresh_db: As
     assert await starts(client, doctor_id) == ALL_SIX
 
 
-async def test_response_shape_and_utc_times(client: AsyncClient, fresh_db: AsyncEngine) -> None:
+async def test_response_shape_and_clinic_local_offset(
+    client: AsyncClient, fresh_db: AsyncEngine
+) -> None:
     doctor_id = await add_doctor(fresh_db)
-    response = await client.get(
-        f"/doctors/{doctor_id}/availability", params={"date": MONDAY}, headers=bearer()
-    )
-    body = response.json()
+    body = (await fetch(client, doctor_id)).json()
     assert set(body) == {"doctor_id", "date", "timezone", "slots"}
     assert body["date"] == MONDAY
     assert body["timezone"] == "Africa/Nairobi"
     first = body["slots"][0]
     assert set(first) == {"start_at", "end_at"}
-    assert datetime.fromisoformat(first["start_at"]) == ALL_SIX[0]
-    assert datetime.fromisoformat(first["end_at"]) == datetime(2030, 1, 7, 6, 30, tzinfo=UTC)
-    assert datetime.fromisoformat(first["start_at"]).utcoffset().total_seconds() == 0  # type: ignore[union-attr]
+    assert first["start_at"] == "2030-01-07T09:00:00+03:00"
+    assert first["end_at"] == "2030-01-07T09:30:00+03:00"
 
 
 async def test_a_booked_slot_disappears(client: AsyncClient, fresh_db: AsyncEngine) -> None:
@@ -127,24 +129,29 @@ async def test_past_dates_are_empty(client: AsyncClient, fresh_db: AsyncEngine) 
     assert await starts(client, doctor_id, "2029-12-31") == []
 
 
-async def test_the_booking_horizon_is_inclusive_of_the_last_day(
+async def test_the_horizon_includes_its_last_day_and_refuses_the_next(
     client: AsyncClient, fresh_db: AsyncEngine
 ) -> None:
     doctor_id = await add_doctor(fresh_db, windows=EVERY_DAY_9_TO_12)
     assert len(await starts(client, doctor_id, "2030-04-01")) == 6  # today + 90 days
-    assert await starts(client, doctor_id, "2030-04-02") == []  # today + 91 days
+    response = await fetch(client, doctor_id, "2030-04-02")  # today + 91 days
+    assert response.status_code == 422
+    assert response.json()["code"] == "BEYOND_BOOKING_HORIZON"
 
 
-async def test_unknown_and_inactive_doctors_are_404(
+async def test_unknown_doctor_is_404(client: AsyncClient) -> None:
+    response = await fetch(client, uuid.uuid4())
+    assert response.status_code == 404
+    assert response.json()["code"] == "DOCTOR_NOT_FOUND"
+
+
+async def test_inactive_doctor_is_409_doctor_unavailable(
     client: AsyncClient, fresh_db: AsyncEngine
 ) -> None:
-    inactive = await add_doctor(fresh_db, active=False)
-    for doctor_id in (uuid.uuid4(), inactive):
-        response = await client.get(
-            f"/doctors/{doctor_id}/availability", params={"date": MONDAY}, headers=bearer()
-        )
-        assert response.status_code == 404
-        assert response.json()["code"] == "DOCTOR_NOT_FOUND"
+    doctor_id = await add_doctor(fresh_db, active=False)
+    response = await fetch(client, doctor_id)
+    assert response.status_code == 409
+    assert response.json()["code"] == "DOCTOR_UNAVAILABLE"
 
 
 async def test_bad_or_missing_date_is_422(client: AsyncClient, fresh_db: AsyncEngine) -> None:
@@ -168,7 +175,4 @@ async def test_availability_exposes_no_patient_information(
 ) -> None:
     doctor_id = await add_doctor(fresh_db)
     await book(fresh_db, doctor_id, ALL_SIX[0])
-    response = await client.get(
-        f"/doctors/{doctor_id}/availability", params={"date": MONDAY}, headers=bearer()
-    )
-    assert "patient" not in response.text.lower()
+    assert "patient" not in (await fetch(client, doctor_id)).text.lower()

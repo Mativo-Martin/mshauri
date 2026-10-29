@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,3 +29,8 @@ async def insert_patient_if_absent(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none() is not None
+
+
+async def get_patient(session: AsyncSession, patient_id: uuid.UUID) -> Patient | None:
+    result = await session.execute(select(Patient).where(Patient.id == patient_id))
+    return result.scalar_one_or_none()

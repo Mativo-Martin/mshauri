@@ -72,5 +72,11 @@ async def availability(
         doctor_id=doctor_id,
         date=day,
         timezone=str(rules.timezone),
-        slots=[SlotOut(start_at=s.start_at, end_at=s.end_at) for s in slots],
+        slots=[
+            SlotOut(
+                start_at=s.start_at.astimezone(rules.timezone),
+                end_at=s.end_at.astimezone(rules.timezone),
+            )
+            for s in slots
+        ],
     )

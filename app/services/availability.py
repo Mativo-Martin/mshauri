@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, ErrorCode
 from app.repositories import doctors as repo
-from app.services.slots import Slot, SlotRules, generate_slots
+from app.services.slots import Slot, SlotRules, generate_slots, within_horizon
 
 
 def local_day_bounds(day: date, rules: SlotRules) -> tuple[datetime, datetime]:
@@ -20,9 +20,13 @@ def local_day_bounds(day: date, rules: SlotRules) -> tuple[datetime, datetime]:
 async def get_availability(
     session: AsyncSession, doctor_id: uuid.UUID, day: date, now: datetime, rules: SlotRules
 ) -> list[Slot]:
-    # Unknown and inactive doctors look the same from outside: 404.
-    if await repo.get_active_doctor(session, doctor_id) is None:
+    doctor = await repo.get_doctor(session, doctor_id)
+    if doctor is None:
         raise AppError(ErrorCode.DOCTOR_NOT_FOUND)
+    if not doctor.is_active:
+        raise AppError(ErrorCode.DOCTOR_UNAVAILABLE)
+    if not within_horizon(day, now, rules):
+        raise AppError(ErrorCode.BEYOND_BOOKING_HORIZON)
 
     range_start, range_end = local_day_bounds(day, rules)
     windows = await repo.get_windows(session, doctor_id, day.weekday())
