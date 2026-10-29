@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, insert, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Appointment
@@ -95,6 +95,35 @@ async def mark_cancelled(
             cancelled_by_sub=cancelled_by_sub,
             updated_at=func.now(),
         )
+        .returning(Appointment)
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one()
+
+
+# PostgreSQL "deadlock_detected". Two appointments swapping slots can hit it (plan D13).
+DEADLOCK_SQLSTATE = "40P01"
+
+
+def is_deadlock(exc: DBAPIError) -> bool:
+    """True when the driver reports a deadlock, whether SQLAlchemy or asyncpg holds the code."""
+    orig = exc.orig
+    for candidate in (orig, getattr(orig, "__cause__", None)):
+        for attribute in ("sqlstate", "pgcode"):
+            if getattr(candidate, attribute, None) == DEADLOCK_SQLSTATE:
+                return True
+    return False
+
+
+async def move_appointment(
+    session: AsyncSession, appointment_id: uuid.UUID, new_start_at: datetime
+) -> Appointment:
+    """Move the same row to a new slot. The unique index decides whether it is free."""
+    start = new_start_at.astimezone(UTC)
+    result = await session.execute(
+        update(Appointment)
+        .where(Appointment.id == appointment_id)
+        .values(start_at=start, end_at=start + SLOT_LENGTH, updated_at=func.now())
         .returning(Appointment)
         .execution_options(populate_existing=True)
     )
